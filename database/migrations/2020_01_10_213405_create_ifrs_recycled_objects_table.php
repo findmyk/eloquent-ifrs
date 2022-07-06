@@ -30,25 +30,27 @@ class CreateIfrsRecycledObjectsTable extends Migration
                 $table->unsignedBigInteger('entity_id');
 
                 // before we set the datatype of this field, we check the existing user's table's id columns datatype
-                $versionString = App::version();
-                $version = strpos($versionString, "Components") > 0 ? substr($versionString, 7, 1) : $versionString;
-                $userModel = is_array(config('ifrs.user_model')) ? config('ifrs.user_model')[intval($version)] : config('ifrs.user_model');
-                $type = Schema::getColumnType((new $userModel())->getTable(),'id');
-                if($type == "integer"){
+                $type = Schema::getColumnType(config('ifrs.table_prefix').'users','id');
+                if ($type === 'integer') {
                     $table->unsignedInteger('user_id');
-                }else{
+                } elseif ($type === 'string') {
+                    $table->uuid('user_id');
+                } else {
                     $table->unsignedBigInteger('user_id');
                 }
 
                 // constraints
-                $versionString = App::version();
-                $version = strpos($versionString, "Components") > 0 ? substr($versionString, 7, 1) : $versionString;
-                $userModel = is_array(config('ifrs.user_model')) ? config('ifrs.user_model')[intval($version)] : config('ifrs.user_model');
                 $table->foreign('entity_id')->references('id')->on(config('ifrs.table_prefix').'entities');
-                $table->foreign('user_id')->references('id')->on((new $userModel())->getTable());
+                $table->foreign('user_id')->references('id')->on(config('ifrs.table_prefix').'users');
 
                 // attributes
-                $table->bigInteger('recyclable_id');
+                if ($type === 'integer') {
+                    $table->unsignedInteger('recyclable_id');
+                } elseif ($type === 'string') {
+                    $table->uuid('recyclable_id');
+                } else {
+                    $table->bigInteger('recyclable_id');
+                }
                 $table->string('recyclable_type', 300);
 
                 // *permanent* deletion

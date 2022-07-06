@@ -1,3 +1,8 @@
+## 4.0.0 - 2021-04-20
+
+- Add Laravel 9 Compatibility
+- Minimum PHP 8.0 requirement
+- Add compount VAT support
 ## 4.1.0 - 2021-06-22
 
 - Add Forex Difference transactions during clearing 

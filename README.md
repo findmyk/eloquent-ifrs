@@ -3,7 +3,7 @@
 [![Build Status](https://app.travis-ci.com/ekmungai/eloquent-ifrs.svg?branch=master)](https://travis-ci.com/ekmungai/eloquent-ifrs)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/7afac1253d0f662d1cfd/test_coverage)](https://codeclimate.com/github/ekmungai/eloquent-ifrs/test_coverage)
 [![Maintainability](https://api.codeclimate.com/v1/badges/7afac1253d0f662d1cfd/maintainability)](https://codeclimate.com/github/ekmungai/eloquent-ifrs/maintainability)
-![PHP 7.3](https://img.shields.io/badge/PHP-7.3-blue.svg)
+![PHP 8.0](https://img.shields.io/badge/PHP-8.0-blue.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Total Downloads](https://poser.pugx.org/ekmungai/eloquent-ifrs/downloads)](//packagist.org/packages/ekmungai/eloquent-ifrs)
 [![Latest Stable Version](https://poser.pugx.org/ekmungai/eloquent-ifrs/v)](//packagist.org/packages/ekmungai/eloquent-ifrs)
@@ -32,7 +32,7 @@ The motivation for this package can be found in detail on my blog post [here](ht
 
 ## Installation
 
-Use composer to Install the package into your laravel or lumen application. Eloquent IFRS requires PHP version 7.3 and Eloquent version 7 and above.
+Use composer to Install the package into your laravel or lumen application. Eloquent IFRS requires PHP version 8.0.2 and Eloquent version 8 and above.
 
 #### For production
 
@@ -161,18 +161,20 @@ $outputVat = Vat::create([
     'name' => "Standard Output Vat",
     'code' => "O",
     'rate' => 20,
+    'account_id' => Account::create([
+        'name' => "Sales VAT Account",
+        'account_type' => Account::CONTROL,
+    ])
 ]);
 
 $inputVat = Vat::create([
     'name' => "Standard Input Vat",
     'code' => "I",
     'rate' => 10,
-]);
-
-$zeroVat = Vat::create([
-    'name' => "Zero Vat",
-    'code' => "Z",
-    'rate' => 0,
+    'account_id' =>  Account::create([
+        'name' => "Input VAT Account",
+        'account_type' => Account::CONTROL,
+    ])
 ]);
 ```
 
@@ -211,15 +213,6 @@ $assetAccount = Account::create([
     'account_type' => Account::NON_CURRENT_ASSET,
 ]);
 
-$salesVatAccount = Account::create([
-    'name' => "Sales VAT Account",
-    'account_type' => Account::CONTROL,
-]);
-
-$purchasesVatAccount = Account::create([
-    'name' => "Input VAT Account",
-    'account_type' => Account::CONTROL,
-]);
 ```
 
 Now that all Accounts are prepared, we can create the first Transaction, a Cash Sale:
@@ -239,14 +232,13 @@ So far the Transaction has only one side of the double entry, so we create a Lin
 use IFRS\models\LineItem;
 
 $cashSaleLineItem = LineItem::create([
-    'vat_id' => $outputVat->id,
     'account_id' => $revenueAccount->id,
-    'vat_account_id' => $salesVatAccount->id,
     'narration' => "Example Cash Sale Line Item",
     'quantity' => 1,
     'amount' => 100,
 ]);
 
+$cashSaleLineItem->addVat($outputVat);
 $cashSale->addLineItem($cashSaleLineItem);
 $cashSale->post(); // This posts the Transaction to the Ledger
 
@@ -263,14 +255,13 @@ $clientInvoice = ClientInvoice::create([
 ]);
 
 $clientInvoiceLineItem = LineItem::create([
-    'vat_id' => $outputVat->id,
     'account_id' => $revenueAccount->id,
-    'vat_account_id' => $salesVatAccount->id,
     'narration' => "Example Credit Sale Line Item",
     'quantity' => 2,
     'amount' => 50,
 ]);
 
+$clientInvoiceLineItem->addVat($outputVat);
 $clientInvoice->addLineItem($clientInvoiceLineItem);
 
 //Transaction save may be skipped as post() saves the Transaction automatically
@@ -285,14 +276,14 @@ $cashPurchase = CashPurchase::create([
 ]);
 
 $cashPurchaseLineItem = LineItem::create([
-    'vat_id' => $inputVat->id,
     'account_id' => $opexAccount->id,
-    'vat_account_id' => $purchasesVatAccount->id,
     'narration' => "Example Cash Purchase Line Item",
     'quantity' => 4,
     'amount' => 25,
 ]);
 
+
+$cashPurchaseLineItem->addVat($inputVat);
 $cashPurchase->addLineItem($cashPurchaseLineItem)->post();
 
 use IFRS\Transactions\SupplierBill;
@@ -306,12 +297,12 @@ $supplierBill = SupplierBill::create([
 $supplierBillLineItem = LineItem::create([
     'vat_id' => $inputVat->id,
     'account_id' => $assetAccount->id,
-    'vat_account_id' => $purchasesVatAccount->id,
     'narration' => "Example Credit Purchase Line Item",
     'quantity' => 4,
     'amount' => 25,
 ]);
 
+$supplierBillLineItem->addVat($inputVat);
 $supplierBill->addLineItem($supplierBillLineItem)->post();
 
 use IFRS\Transactions\ClientReceipt;
@@ -323,9 +314,7 @@ $clientReceipt = ClientReceipt::create([
 ]);
 
 $clientReceiptLineItem = LineItem::create([
-    'vat_id' => $zeroVat->id,
     'account_id' => $bankAccount->id,
-    'vat_account_id' => $purchasesVatAccount->id,
     'narration' => "Part payment for Client Invoice",
     'quantity' => 1,
     'amount' => 50,
@@ -499,7 +488,7 @@ I am acutely aware that as a professionally trained Accountant I may have used s
 - [x] Add Cashflow Statement
 - [x] Laravel 8 Compatibility
 - [x] Add Multicurrency support
-- [ ] Expand Taxation Functionality
+- [x] Expand Taxation Functionality
 
 ## License
 This software is distributed for free under the MIT License
